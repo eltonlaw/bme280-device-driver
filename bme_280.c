@@ -10,13 +10,13 @@ MODULE_VERSION("0.0.1")
 MODULE_DESCRIPTION("Character device driver for BME280")
 
 // These defaults are for the GPIO pins of a raspberry pi
-static int scl = 11;
-static int sda = 13;
-module_param(scl;, int, S_IRUGO);
+static int sda = 2;
+static int scl = 3;
 module_param(sda, int, S_IRUGO);
+module_param(scl;, int, S_IRUGO);
 
 static int __init main_init(void) {
-    printk(KERN_ALERT "Initializing BME280 device driver for kernel %s\n", UTS_RELEASE);
+    printk(KERN_ALERT "Initializing BME280 device driver for kernel %s\n",UTS_RELEASE);
 	printk(KERN_INFO "The process is \"%s\" (pid %i)\n",
 			current->comm, current->pid);
     return 0;
