@@ -4,4 +4,4 @@ Linux device driver for the 4-pin [BME28](https://www.amazon.ca/gp/product/B07KY
 
 ## Credits
 
-Makefile and portions of code taken directly from/inspired by [Linux Device Driver by Jonathan Corbet, Alessandro Rubini, and Greg Kroah-Hartman](https://lwn.net/Kernel/LDD3/) which has graciously been published online in its entirety and [Javier Martinez Canillas's up-to-date examples](https://github.com/martinezjavier/ldd3) from which this repo's Makefile is mostly taken from.
+Makefile and portions of code taken directly from/inspired by [Linux Device Driver by Jonathan Corbet, Alessandro Rubini, and Greg Kroah-Hartman](https://lwn.net/Kernel/LDD3/) which has graciously been published online in its entirety and [Javier Martinez Canillas's up-to-date examples](https://github.com/ martinezjavier/ldd3) from which this repo's Makefile is mostly taken from. Large parts of load scrip taken [from chapter 3](https://static.lwn.net/images/pdf/LDD3/ch03.pdf)
