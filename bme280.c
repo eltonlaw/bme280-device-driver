@@ -3,7 +3,7 @@
 #include <linux/init.h>
 #include <linux/kdev_t.h>   // MKDEV
 #include <linux/vermagic.h> // UTS_RELEASE
-#include <linux/module.h>
+#include <linux/module.h>   // THIS_MODULE
 #include <linux/sched.h>    // task_struct
 #include <linux/types.h>    // dev_t
 
@@ -50,6 +50,33 @@ static int __init main_init(void) {
 
     return 0;
 }
+
+unsigned int bme280_poll (struct file* filp, struct poll_table_struct * pt) {
+	unsigned int mask = 0;
+    return mask;
+}
+
+ssize_t bme280_read (struct file *filp, char __user *buf, size_t count,
+                loff_t *f_pos) {
+    ssize_t retval =0;
+    return retval;
+}
+
+int bme280_open(struct inode *inode, struct file *filp) {
+    return 0;
+}
+
+int bme280_release(struct inode *inode, struct file *filp) {
+	return 0;
+}
+
+struct file_operations fops = {
+	.owner = THIS_MODULE, // Links file operations to this module
+    .poll = bme280_poll,
+    .read = bme280_read,
+    .open = bme280_open,
+    .release = bme280_release,
+};
 
 module_init(main_init);
 module_exit(main_exit);
