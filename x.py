@@ -1,5 +1,6 @@
 #!/usr/bin/env python 
 import argparse
+import glob
 import os
 import sys
 import subprocess
@@ -11,7 +12,8 @@ parser.add_argument('cmd', type=str, nargs='+',
                     help='One of [start|stop|restart|unregister-char-device]')
 
 def call(cmd):
-    return subprocess.call(cmd, shell=True)
+    """Run strings as sh commands"""
+    return subprocess.call(cmd.split(" "))
 
 def noop(argv):
     pass
@@ -32,10 +34,14 @@ def _get_major_numbers(name):
 def stop(argv):
     """ Unloads device driver (runs operations in reverse direction of initialization)
 
+    - Remove character special files from /dev if they exist
     - Remove module from the kernel
     """
-    call(f"sudo rm /dev/{MODULE}*")
-    call(f"sudo rmmod {MODULE}")
+    special_char_files = glob.glob("/dev/bme280*")
+    if len(special_char_files) > 0:
+        subprocess.call(["rm"] + special_char_files)
+
+    call(f"rmmod {MODULE}")
     print("Unloading BME280 module...")
 
 def restart(argv):
@@ -60,13 +66,14 @@ def unregister_char_device(major_numbers):
     # to run the logic that unregisters character devices
     for device_number in major_numbers:
         print("Unregistering major number: ", device_number)
-        call(f"sudo insmod devtools.ko cmd=unregister-char-device major={device_number}")
-        call(f"sudo rmmod devtools")
+        call(f"insmod devtools.ko cmd=unregister-char-device major={device_number}")
+        call(f"rmmod devtools")
 
 def start(argv):
     """ Loads device driver into kernel
 
     - Inserts module into kernel if it exists
+    - Creates character special files
     """
     print("Loading BME280 module...")
 
@@ -80,15 +87,15 @@ def start(argv):
     if not os.path.exists(f"{MODULE}.ko"):
         print(f"ERROR: '{MODULE}.ko' file doesn't exist. Run `make` first")
         sys.exit(0)
-    call(f"sudo insmod {MODULE}.ko")
+    call(f"insmod {MODULE}.ko")
 
     # Make character special file for each major number that has the module prefix
     for i, major in enumerate(_get_major_numbers(MODULE)):
         special_file = f"/dev/{MODULE}{i}"
         print(f"Making character special file: {special_file} for major {major}") 
-        call(f"sudo mknod {special_file} c {major} {i}")
-    call(f"sudo chgrp wheel /dev/{MODULE}*")
-    call(f"sudo chmod 664 /dev/{MODULE}*")
+        call(f"mknod {special_file} c {major} {i}")
+        call(f"chgrp wheel {special_file}")
+        call(f"chmod 664 {special_file}")
 
 available_commands = {
     "start": start,
