@@ -4,14 +4,10 @@
 #include <linux/init.h>
 #include <linux/kdev_t.h>   // MKDEV
 #include <linux/vermagic.h> // UTS_RELEASE
+#include <linux/gpio.h>
 #include <linux/module.h>   // THIS_MODULE
 #include <linux/sched.h>    // task_struct
 #include <linux/types.h>    // dev_t
-
-MODULE_LICENSE("GPL v2");
-MODULE_AUTHOR("eltonlaw");
-MODULE_VERSION("0.0.1");
-MODULE_DESCRIPTION("Character device driver for BME280");
 
 // These defaults are for the GPIO pins of a raspberry pi
 // static int sda = 2;
@@ -85,7 +81,8 @@ static int __init bme280_init(void) {
         bme280_exit();
     }
 
-    // Initialize cdev struct and add to system
+    // Setup cdev struct and add to system
+    printk(KERN_ALERT "BME280 - Allocating cdev");
     cdev1 = cdev_alloc( );
 	cdev1->owner = THIS_MODULE;
     cdev1->ops = &bme280_fops;
@@ -93,9 +90,14 @@ static int __init bme280_init(void) {
         printk(KERN_ALERT "BME280 - Error encountered adding char device to system");
         bme280_exit();
     }
+    printk(KERN_ALERT "BME280 - FINISHED INITIALIZING");
 
     return 0;
 }
 
 module_init(bme280_init);
 module_exit(bme280_exit);
+
+MODULE_LICENSE("GPL v2");
+MODULE_AUTHOR("Elton Law");
+MODULE_DESCRIPTION("Bosch BME280 humidity and pressure sensor driver");

@@ -1,4 +1,4 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python3
 import argparse
 import glob
 import os
@@ -69,6 +69,15 @@ def unregister_char_device(major_numbers):
         call(f"insmod devtools.ko cmd=unregister-char-device major={device_number}")
         call(f"rmmod devtools")
 
+def existing_su_group():
+    with open("/etc/group", "r") as f:
+        line  = "placeholder"
+        while line != "":
+            line = f.readline()
+            if "wheel" in line:
+                return "wheel"
+    return "staff"
+
 def start(argv):
     """ Loads device driver into kernel
 
@@ -92,9 +101,10 @@ def start(argv):
     # Make character special file for each major number that has the module prefix
     for i, major in enumerate(_get_major_numbers(MODULE)):
         special_file = f"/dev/{MODULE}{i}"
-        print(f"Making character special file: {special_file} for major {major}") 
+        su_group = existing_su_group()
+        print(f"Making character special file: {special_file} for major {major}, assigned to {su_group}") 
         call(f"mknod {special_file} c {major} {i}")
-        call(f"chgrp wheel {special_file}")
+        call(f"chgrp {su_group} {special_file}")
         call(f"chmod 664 {special_file}")
 
 available_commands = {
