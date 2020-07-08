@@ -8,6 +8,7 @@
 #include <linux/module.h>   // THIS_MODULE
 #include <linux/sched.h>    // task_struct
 #include <linux/types.h>    // dev_t
+#include <linux/i2c-dev.h>
 
 // These defaults are for the GPIO pins of a raspberry pi
 // static int sda = 2;
@@ -20,6 +21,7 @@ int major; // If `alloc_chrdev_region` is successful this will be assigned a val
 int minor = 0;
 char* name = "bme280";
 struct cdev* cdev1 = NULL;
+int i2c_bus_number = 1;
 
 /// module main exit function
 static void bme280_exit(void) {
@@ -46,13 +48,27 @@ unsigned int bme280_poll (struct file* filp, struct poll_table_struct * pt) {
     return mask;
 }
 
+struct bme280_dev {
+	struct cdev cdev;
+    int x;
+};
+
 ssize_t bme280_read (struct file *filp, char __user *buf, size_t count,
                 loff_t *f_pos) {
-    ssize_t retval =0;
-    return retval;
+    struct bme280_dev* dev = filp->private_data;
+
+    printk(KERN_ALERT "BME280 - Read called %d", dev->x);
+
+    return ret;
 }
 
 int bme280_open(struct inode *inode, struct file *filp) {
+	struct bme280_dev *dev;
+    printk(KERN_ALERT "BME280 - Open called");
+
+	dev = container_of(inode->i_cdev, struct bme280_dev, cdev);
+    dev->x = 5;
+    filp->private_data = dev;
     return 0;
 }
 
@@ -83,7 +99,8 @@ static int __init bme280_init(void) {
 
     // Setup cdev struct and add to system
     printk(KERN_ALERT "BME280 - Allocating cdev");
-    cdev1 = cdev_alloc( );
+    cdev1 = cdev_alloc();
+    cdev_init(cdev1, &bme280_fops);
 	cdev1->owner = THIS_MODULE;
     cdev1->ops = &bme280_fops;
     if (cdev_add(cdev1, dev1, 1) < 0) {

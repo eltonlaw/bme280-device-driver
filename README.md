@@ -10,7 +10,7 @@ Linux device driver for the 4-pin variant (I2C only) of the [BME280](https://www
 
 Enable in `raspi-config` and install tooling if it doesn't exist
 
-    sudo apt-get install i2c-tools
+    sudo apt-get install i2c-tools i2c-dev
 
 To check that it's working:
 

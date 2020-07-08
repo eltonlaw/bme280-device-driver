@@ -26,7 +26,7 @@ clean:
 
 rsync: clean
 	rsync -a --delete . $(REMOTE_SSH_ALIAS):$(REMOTE_DIR)/bme280-device-driver
-	ssh -t $(REMOTE_SSH_ALIAS) "tmux send-keys -t 0 'make && sudo ./x.py restart' 'Enter'"
+	ssh -t $(REMOTE_SSH_ALIAS) "tmux send-keys -t 0 'make && sudo ./x.py restart && ./x.py test' 'Enter'"
 
 .PHONY: modules modules_install clean
 

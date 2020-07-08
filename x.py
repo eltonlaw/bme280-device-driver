@@ -107,12 +107,22 @@ def start(argv):
         call(f"chgrp {su_group} {special_file}")
         call(f"chmod 664 {special_file}")
 
+def test(argv):
+    if os.path.exists("/dev/bme2800"):
+        f = open("/dev/bme2800", "r")
+        val = f.read()
+        print(f"Read: <{val}>")
+        f.close()
+    else:
+        print("ERROR: /dev/bme2800 doesn't exist")
+
 available_commands = {
     "start": start,
     "stop": stop,
     "restart": restart,
     "unregister-char-device": unregister_char_device,
     "noop": noop,
+    "test": test,
 }
 
 if __name__ == "__main__":
