@@ -2,6 +2,7 @@
 *.cmd
 *.ko
 *.o
+*.o.d
 *.mod.c
 *.mod
 modules.order

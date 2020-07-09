@@ -1,4 +1,5 @@
 #include <asm/current.h>    // current
+#include <linux/uaccess.h>
 #include <linux/cdev.h>     // cdev
 #include <linux/fs.h>       // register_chrdev_region
 #include <linux/init.h>
@@ -8,8 +9,10 @@
 #include <linux/module.h>   // THIS_MODULE
 #include <linux/sched.h>    // task_struct
 #include <linux/types.h>    // dev_t
+#include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 
+#define BME280_I2C_BUS_ADDRESS 0x76
 // These defaults are for the GPIO pins of a raspberry pi
 // static int sda = 2;
 // static int scl = 3;
@@ -24,7 +27,6 @@ char* name = "bme280";
 
 struct cdev* cdev1 = NULL;
 
-uint8_t address = 0x76;
 int i2c_bus_number = 1; // Hard coded, only PIv1 uses 0
 
 /// module main exit function
@@ -54,18 +56,42 @@ unsigned int bme280_poll (struct file* filp, struct poll_table_struct * pt) {
 
 struct bme280_dev {
 	struct cdev cdev;
+	struct i2c_adapter i2c_adap;
+	struct i2c_client *i2c_client;
     int x;
+};
+
+const struct i2c_board_info bme280_i2c_board_info = {
+    I2C_BOARD_INFO("bme280", BME280_I2C_BUS_ADDRESS),
 };
 
 int bme280_open(struct inode *inode, struct file *filp) {
 	struct bme280_dev *dev;
+    struct i2c_client *i2c_client;
     printk(KERN_ALERT "BME280 - `open` called");
+
+    // setup i2c client
+    i2c_client = i2c_new_device(i2c_get_adapter(1), &bme280_i2c_board_info);
 
     // Create an instance of a bme280_dev and add the cdev putting everything
     // into private_data so we can access it from the read later
 	dev = container_of(inode->i_cdev, struct bme280_dev, cdev);
     dev->x = 5;
+    dev->i2c_client = i2c_client;
     filp->private_data = dev;
+
+    return 0;
+}
+
+int bme280_release(struct inode *inode, struct file *filp) {
+	struct bme280_dev *dev;
+    printk(KERN_ALERT "BME280 - `release` called");
+
+	dev = container_of(inode->i_cdev, struct bme280_dev, cdev);
+    if (dev->i2c_client) {
+        printk(KERN_ALERT "BME280 - unregistering i2c_client");
+        i2c_unregister_device(dev->i2c_client);
+    }
 
     return 0;
 }
@@ -73,16 +99,22 @@ int bme280_open(struct inode *inode, struct file *filp) {
 ssize_t bme280_read (struct file *filp, char __user *buf, size_t count,
                 loff_t *f_pos) {
     struct bme280_dev* dev = filp->private_data;
-    ssize_t ret;
-    printk(KERN_ALERT "BME280 - `read` called %d", dev->x);
-    ret = 0;
+    unsigned char data[2] = {0};
+    int recv_ret;
+    unsigned long copy_ret;
 
-    return ret;
-}
+    printk(KERN_ALERT "BME280 - `read` called %d, count=%d", dev->x, count);
 
-int bme280_release(struct inode *inode, struct file *filp) {
-     printk(KERN_ALERT "BME280 - `release` called");
-     return 0;
+    recv_ret = i2c_master_recv(dev->i2c_client, data, 2);
+    if (recv_ret < 0) {
+        printk(KERN_ALERT "BME280 - `i2c_master_recv` error %d", recv_ret);
+    } else {
+        // Kernel -> User
+        printk(KERN_ALERT "BME280 - data=%x %x", data[0], data[1]);
+        copy_ret = copy_to_user(buf, data, 2);
+        printk(KERN_ALERT "BME280 - recieved=%ld", copy_ret);
+    }
+    return 0;
 }
 
 struct file_operations bme280_fops = {

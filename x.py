@@ -108,13 +108,16 @@ def start(argv):
         call(f"chmod 664 {special_file}")
 
 def test(argv):
-    if os.path.exists("/dev/bme2800"):
-        f = open("/dev/bme2800", "r")
-        val = f.read()
-        print(f"Read: <{val}>")
+    device = f"/dev/{MODULE}0"
+    if os.path.exists(device):
+        f = open(device, "r")
+        print("Read:", f.read())
+        print("Read:", f.read())
+        print("Read:", f.read())
+        print("Read:", f.read())
         f.close()
     else:
-        print("ERROR: /dev/bme2800 doesn't exist")
+        print(f"ERROR: device doesn't exist")
 
 available_commands = {
     "start": start,
