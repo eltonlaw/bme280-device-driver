@@ -15,13 +15,17 @@
 // static int scl = 3;
 // module_param(sda, int, S_IRUGO);
 // module_param(scl, int, S_IRUGO);
+//
 
 int n_devices = 1;
 int major; // If `alloc_chrdev_region` is successful this will be assigned a value
 int minor = 0;
 char* name = "bme280";
+
 struct cdev* cdev1 = NULL;
-int i2c_bus_number = 1;
+
+uint8_t address = 0x76;
+int i2c_bus_number = 1; // Hard coded, only PIv1 uses 0
 
 /// module main exit function
 static void bme280_exit(void) {
@@ -53,26 +57,32 @@ struct bme280_dev {
     int x;
 };
 
+int bme280_open(struct inode *inode, struct file *filp) {
+	struct bme280_dev *dev;
+    printk(KERN_ALERT "BME280 - `open` called");
+
+    // Create an instance of a bme280_dev and add the cdev putting everything
+    // into private_data so we can access it from the read later
+	dev = container_of(inode->i_cdev, struct bme280_dev, cdev);
+    dev->x = 5;
+    filp->private_data = dev;
+
+    return 0;
+}
+
 ssize_t bme280_read (struct file *filp, char __user *buf, size_t count,
                 loff_t *f_pos) {
     struct bme280_dev* dev = filp->private_data;
-
-    printk(KERN_ALERT "BME280 - Read called %d", dev->x);
+    ssize_t ret;
+    printk(KERN_ALERT "BME280 - `read` called %d", dev->x);
+    ret = 0;
 
     return ret;
 }
 
-int bme280_open(struct inode *inode, struct file *filp) {
-	struct bme280_dev *dev;
-    printk(KERN_ALERT "BME280 - Open called");
-
-	dev = container_of(inode->i_cdev, struct bme280_dev, cdev);
-    dev->x = 5;
-    filp->private_data = dev;
-    return 0;
-}
-
-int bme280_release(struct inode *inode, struct file *filp) { return 0;
+int bme280_release(struct inode *inode, struct file *filp) {
+     printk(KERN_ALERT "BME280 - `release` called");
+     return 0;
 }
 
 struct file_operations bme280_fops = {
