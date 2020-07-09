@@ -81,10 +81,9 @@ int bme280_open(struct inode *inode, struct file *filp) {
 }
 
 int bme280_release(struct inode *inode, struct file *filp) {
-	struct bme280_dev *dev;
+	struct bme280_dev *dev = filp->private_data;
     printk(KERN_ALERT "BME280 - `release` called");
 
-	dev = container_of(inode->i_cdev, struct bme280_dev, cdev);
     if (dev->i2c_client) {
         printk(KERN_ALERT "BME280 - unregistering i2c_client");
         i2c_unregister_device(dev->i2c_client);
