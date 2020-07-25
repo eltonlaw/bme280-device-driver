@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""Script for loading and unloading the module.
+
+Check the available commands map for a list of the command line options available.
+"""
 import argparse
 import glob
 import os
@@ -7,15 +11,16 @@ import subprocess
 
 MODULE = "bme280"
 
-parser = argparse.ArgumentParser(description="Setup and teardown of driver")
-parser.add_argument('cmd', type=str, nargs='+',
-                    help='One of [start|stop|restart|unregister-char-device]')
+REMOTE_SSH_ALIAS = os.environ.get("REMOTE_SSH_ALIAS")
+REMOTE_DIR = os.environ.get("REMOTE_DIR")
+TMUX_SESSION_NAME = 0 # Hardcoded to 0
 
 def call(cmd):
     """Run strings as sh commands"""
     return subprocess.call(cmd.split(" "))
 
 def noop(argv):
+    print(argv)
     pass
 
 def _get_major_numbers(name):
@@ -119,16 +124,40 @@ def test(argv):
     else:
         print(f"ERROR: device doesn't exist")
 
+def rinit(argv):
+    new_session = f"new -d -s {TMUX_SESSION_NAME}"
+    split_pane = "split-window -h"
+    cd = f"send-keys -t {TMUX_SESSION_NAME}:0.0 'cd {REMOTE_DIR}/bme280-device-driver && clear' 'Enter'"
+    start_journactl = "select-pane -t 1 \; send-keys 'sudo journalctl -f' 'Enter'"
+    call(f"ssh -t {REMOTE_SSH_ALIAS} tmux {new_session} \; {split_pane} \; {cd} \; {start_journactl}")
+
+def rtest(argv):
+    """Send local repo to raspberry pi and run tests
+
+    ...assumes a tmux session is already open with a name of 0"""
+    # Copy local to remote
+    call(f"rsync -a --delete . {REMOTE_SSH_ALIAS}:{REMOTE_DIR}/bme280-device-driver")
+    # Run test in ssh session
+    tmux_command = f"tmux send-keys -t {TMUX_SESSION_NAME}:0.0 'make && sudo ./x.py restart && ./x.py test' 'Enter'"
+    call(f"ssh -t {REMOTE_SSH_ALIAS} {tmux_command}")
+
 available_commands = {
-    "start": start,
-    "stop": stop,
+    "start": start, # load module into kernel, make special file
+    "stop": stop, # unload module from kernel, rm special file
     "restart": restart,
+    # DEV COMMANDS
     "unregister-char-device": unregister_char_device,
-    "noop": noop,
-    "test": test,
+    "noop": noop, # does nothing, used for testing this script
+    "test": test, # test to read from special file
+    "rinit": rinit, # start a tmux session on remote
+    "rtest": rtest, # rsync local to remote and run `test`
 }
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Setup and teardown of driver")
+    top_level_cmds = sorted(list(available_commands.keys()))
+    parser.add_argument("cmd", type=str, nargs="+",
+                        help=f"One of [{', '.join(top_level_cmds)}]")
     args = parser.parse_args()
     cmd = available_commands.get(args.cmd[0])
     if cmd is not None:

@@ -24,10 +24,6 @@ modules_install:
 clean:
 	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions Module.symvers *.mod modules.order
 
-rsync: clean
-	rsync -a --delete . $(REMOTE_SSH_ALIAS):$(REMOTE_DIR)/bme280-device-driver
-	ssh -t $(REMOTE_SSH_ALIAS) "tmux send-keys -t 0 'make && sudo ./x.py restart && ./x.py test' 'Enter'"
-
 .PHONY: modules modules_install clean
 
 else

@@ -42,6 +42,7 @@ static void bme280_exit(void) {
         cdev_del(cdev1);
     }
 
+    /* major should only be set if `alloc_chrdev_region` ran successfully */
     if (major > 0) {
         printk(KERN_ALERT "BME280 - Unregistering char device %d\n", major);
         dev1 = MKDEV(major, minor);
@@ -157,7 +158,7 @@ static int __init bme280_init(void) {
         goto exit;
     }
 
-    printk(KERN_ALERT "BME280 - FINISHED INITIALIZING");
+    printk(KERN_ALERT "BME280 - Initialized successfully");
     return 0;
 
 exit:
