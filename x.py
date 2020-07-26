@@ -46,6 +46,7 @@ def stop(argv):
     if len(special_char_files) > 0:
         subprocess.call(["rm"] + special_char_files)
 
+    call(f"sync") # flushes buffered writes
     call(f"rmmod {MODULE}")
     print("Unloading BME280 module...")
 
@@ -71,7 +72,9 @@ def unregister_char_device(major_numbers):
     # to run the logic that unregisters character devices
     for device_number in major_numbers:
         print("Unregistering major number: ", device_number)
+        call(f"sync") # flushes buffered writes
         call(f"insmod devtools.ko cmd=unregister-char-device major={device_number}")
+        call(f"sync") # flushes buffered writes
         call(f"rmmod devtools")
 
 def existing_su_group():
@@ -101,10 +104,12 @@ def start(argv):
     if not os.path.exists(f"{MODULE}.ko"):
         print(f"ERROR: '{MODULE}.ko' file doesn't exist. Run `make` first")
         sys.exit(0)
+    call(f"sync") # flushes buffered writes
     call(f"insmod {MODULE}.ko")
 
     # Make character special file for each major number that has the module prefix
     for i, major in enumerate(_get_major_numbers(MODULE)):
+        # /dev is conventionally where char devices are put
         special_file = f"/dev/{MODULE}{i}"
         su_group = existing_su_group()
         print(f"Making character special file: {special_file} for major {major}, assigned to {su_group}") 
