@@ -1,27 +1,27 @@
-#include <asm/current.h>    // current
+#include <asm/current.h>
 #include <linux/uaccess.h>
-#include <linux/cdev.h>     // cdev
-#include <linux/fs.h>       // register_chrdev_region
+#include <linux/cdev.h>
+#include <linux/fs.h>
 #include <linux/init.h>
-#include <linux/kdev_t.h>   // MKDEV
-#include <linux/vermagic.h> // UTS_RELEASE
+#include <linux/kdev_t.h>
+#include <linux/vermagic.h>
 #include <linux/gpio.h>
-#include <linux/module.h>   // THIS_MODULE
-#include <linux/sched.h>    // task_struct
-#include <linux/types.h>    // dev_t
+#include <linux/module.h>
+#include <linux/sched.h>
+#include <linux/types.h>
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 
-static int n_devices = 1;
-static int major; // If `alloc_chrdev_region` is successful this will be assigned a value
-static int minor = 0;
+static int major; /* Major number dynamically allocated by kernel, will be
+                     assigned a value later */
+static int minor = 0; /* Only creating one device */
+static int n_devices = 1; /* Only creating one device */
 static char* name = "bme280";
 static struct cdev* cdev1 = NULL;
-
 static int i2c_bus_number = 1;
+
 module_param(i2c_bus_number, int, S_IRUGO);
-MODULE_PARM_DESC(i2c_bus_number,
-    "Original pi uses port 0, everything else uses 1");
+MODULE_PARM_DESC(i2c_bus_number, "Original pi uses port 0, everything else uses 1");
 
 /* register offsets */
 #define BME280_I2C_BUS_ADDRESS 0x76
@@ -37,7 +37,7 @@ static void bme280_exit(void) {
     dev_t dev1;
     printk(KERN_ALERT "BME280 - Stopping device driver\n");
 
-    if (cdev1 != NULL) {
+    if (cdev1) {
         printk(KERN_ALERT "BME280 - Removing cdev1 from system");
         cdev_del(cdev1);
     }
@@ -70,7 +70,7 @@ int bme280_open(struct inode *inode, struct file *filp) {
     printk(KERN_ALERT "BME280 - `open` called");
 
     /* setup i2c client */
-    i2c_client = i2c_new_device(i2c_get_adapter(1), &bme280_i2c_board_info);
+    i2c_client = i2c_new_device(i2c_get_adapter(i2c_bus_number), &bme280_i2c_board_info);
 
     /* Create an instance of a bme280_dev and add the cdev putting everything
      * into private_data so we can access it from the read later */
@@ -93,16 +93,17 @@ int bme280_release(struct inode *inode, struct file *filp) {
     return 0;
 }
 
-ssize_t bme280_read (struct file *filp, char __user *buf, size_t count,
+ssize_t bme280_read (struct file *filp, char __user *buf, size_t buf_length,
                 loff_t *f_pos) {
     struct bme280_dev* dev = filp->private_data;
     int err;
-    unsigned long copied;
-    /* i2c payload is 2 bytes: (address, value)*/
-    int bufsize = 2;
+    int bytes_read = 0;
+    int bufsize = 2; /* i2c payload is 2 bytes: (address, value)*/
     unsigned char data[2] = {0};
 
-    printk(KERN_ALERT "BME280 - `read` called, count=%d", count);
+#ifdef DEBUG
+	printk(KERN_INFO "BME280 - device_read(%p,%p,%d)\n", filp, buf, buf_length);
+#endif
 
     err = i2c_master_recv(dev->i2c_client, data, bufsize);
     if (err < 0) {
@@ -110,14 +111,19 @@ ssize_t bme280_read (struct file *filp, char __user *buf, size_t count,
         goto exit;
     }
 
-    copied = copy_to_user(buf, data, bufsize);
-    if (copied) {
+    bytes_read = copy_to_user(buf, data, bufsize);
+    if (bytes_read) {
         err = -EFAULT;;
         printk(KERN_ALERT "BME280 - `copy_to_user` error %d", err);
         goto exit;
     }
-    printk(KERN_ALERT "BME280 - data=[%x %x],copied=%lu", data[0], data[1], copied);
-    return 0;
+
+#ifdef DEBUG
+	printk(KERN_INFO "BME280 - read %d bytes, %d left\n, data=[%x %x]",
+            bytes_read, buf_length, data[0], data[1]);
+#endif
+
+    return bytes_read;
 
 exit:
     return err;
@@ -134,6 +140,7 @@ struct file_operations bme280_fops = {
 static int __init bme280_init(void) {
     dev_t dev1;
     int err;
+
     printk(KERN_ALERT "BME280 - Initializing device driver. kernel=%s,parent_process=\"%s\",pid=%i\n",
         UTS_RELEASE, current->comm, current->pid);
 
@@ -151,7 +158,6 @@ static int __init bme280_init(void) {
     cdev1 = cdev_alloc();
     cdev_init(cdev1, &bme280_fops);
 	cdev1->owner = THIS_MODULE;
-    cdev1->ops = &bme280_fops;
     err = cdev_add(cdev1, dev1, 1);
     if (err < 0) {
         printk(KERN_ALERT "BME280 - Error encountered adding char device to system");
