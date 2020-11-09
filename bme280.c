@@ -96,7 +96,7 @@ int bme280_release(struct inode *inode, struct file *filp) {
 ssize_t bme280_read (struct file *filp, char __user *buf, size_t buf_length,
                 loff_t *f_pos) {
     struct bme280_dev* dev = filp->private_data;
-    int err;
+    int rc;
     int bytes_read = 0;
     int bufsize = 2; /* i2c payload is 2 bytes: (address, value)*/
     unsigned char data[2] = {0};
@@ -105,16 +105,16 @@ ssize_t bme280_read (struct file *filp, char __user *buf, size_t buf_length,
 	printk(KERN_INFO "BME280 - device_read(%p,%p,%d)\n", filp, buf, buf_length);
 #endif
 
-    err = i2c_master_recv(dev->i2c_client, data, bufsize);
-    if (err < 0) {
-        printk(KERN_ALERT "BME280 - `i2c_master_recv` error %d", err);
+    rc = i2c_master_recv(dev->i2c_client, data, bufsize);
+    if (rc < 0) {
+        printk(KERN_ALERT "BME280 - `i2c_master_recv` return code %d", rc);
         goto exit;
     }
 
     bytes_read = copy_to_user(buf, data, bufsize);
     if (bytes_read) {
-        err = -EFAULT;;
-        printk(KERN_ALERT "BME280 - `copy_to_user` error %d", err);
+        rc = -EFAULT;;
+        printk(KERN_ALERT "BME280 - `copy_to_user` return code %d", rc);
         goto exit;
     }
 
@@ -126,7 +126,7 @@ ssize_t bme280_read (struct file *filp, char __user *buf, size_t buf_length,
     return bytes_read;
 
 exit:
-    return err;
+    return rc;
 }
 
 struct file_operations bme280_fops = {
@@ -139,14 +139,14 @@ struct file_operations bme280_fops = {
 
 static int __init bme280_init(void) {
     dev_t dev1;
-    int err;
+    int rc;
 
     printk(KERN_ALERT "BME280 - Initializing device driver. kernel=%s,parent_process=\"%s\",pid=%i\n",
         UTS_RELEASE, current->comm, current->pid);
 
     /* Register char device major number dynamically */
-    err = alloc_chrdev_region(&dev1, minor, n_devices, name);
-    if (err < 0) {
+    rc = alloc_chrdev_region(&dev1, minor, n_devices, name);
+    if (rc < 0) {
         printk(KERN_ALERT "BME280 - Can't get major number\n");
         goto exit;
     }
@@ -158,8 +158,8 @@ static int __init bme280_init(void) {
     cdev1 = cdev_alloc();
     cdev_init(cdev1, &bme280_fops);
 	cdev1->owner = THIS_MODULE;
-    err = cdev_add(cdev1, dev1, 1);
-    if (err < 0) {
+    rc = cdev_add(cdev1, dev1, 1);
+    if (rc < 0) {
         printk(KERN_ALERT "BME280 - Error encountered adding char device to system");
         goto exit;
     }
@@ -169,7 +169,7 @@ static int __init bme280_init(void) {
 
 exit:
     bme280_exit();
-    return err;
+    return rc;
 }
 
 module_init(bme280_init);
