@@ -1,3 +1,5 @@
+#if IS_ENABLED(CONFIG_I2C)
+
 #include <asm/current.h>
 #include <linux/uaccess.h>
 #include <linux/cdev.h>
@@ -178,3 +180,5 @@ module_exit(bme280_exit);
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Elton Law");
 MODULE_DESCRIPTION("Bosch BME280 humidity and pressure sensor driver");
+
+#endif
